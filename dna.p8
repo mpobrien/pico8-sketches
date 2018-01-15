@@ -76,7 +76,7 @@ function cam:new(pos, velocity, rot)
 end
 
 function cam:update()
-	--self.pos = self.pos:plus(self.velocity)
+	self.pos = self.pos:plus(self.velocity)
 	if(btn(0)) self.pos.x -= .1
 	if(btn(1)) self.pos.x += .1
 	if(btn(2)) self.pos.y -= .1
@@ -195,7 +195,7 @@ function _init()
 end
 
 function comparator(a, b)
-	return a.pos.z - b.pos.z
+	return b.pos.z - a.pos.z
 end
 
 ticker = 0
@@ -212,6 +212,37 @@ function _update()
 		--local rotx, roty = rotate2d(points[i].x, points[i].y, 0, 0, theta)
 		--points[i] = vec3d:new(rotx, roty, points[i].z)
 	--end
+end
+
+nucleotide = {}
+function nucleotide:new(pos, pos2, angle)
+	local newobj = {pos=pos, pos2=pos2, angle=angle}
+    self.__index = self
+	return setmetatable(newobj, self)
+end
+
+function nucleotide:update()
+	self.pos.x, self.pos.z = rotate2d(self.pos.x, self.pos.z, 0, 0, -0.01)
+	self.pos2.x, self.pos2.z = rotate2d(self.pos2.x, self.pos2.z, 0, 0, -0.01)
+end
+
+function nucleotide:draw()
+	local points={}
+	local ends = {self.pos, self.pos2}
+	for p in all(ends) do
+		local x, y, z
+		x = p.x - c.pos.x
+		y = p.y - c.pos.y
+		z = p.z - c.pos.z
+		x, z = rotate2d(x, z, 0, 0, c.rot.x)
+		y, z = rotate2d(y, z, 0, 0, c.rot.y)
+		local f = 128 / z
+		x *= f
+		y *= f
+		local f1 = f/3
+		add(points, {x+cx, y+cy})
+	end
+	line(points[1][1], points[1][2], points[2][1], points[2][2], 9)
 end
 
 orb = {}
@@ -250,13 +281,13 @@ function orb:draw(c)
 	local f = 128 / z
 	x *= f
 	y *= f
-	local f1 = f/3
+	local f1 = f/4
 	fillp(0b0000000000000000)
 	circfill(cx + x, cy+ y, f1, self.col)
 	circ(cx + x, cy+ y, f1, 0)
 end
 
-c = cam:new(vec3d:new(4,3,-9), vec3d:new(0, 0, 0), vec3d:new(.1,.1,0))
+c = cam:new(vec3d:new(4,3,-6), vec3d:new(0, 0.1, 0), vec3d:new(.1,.1,0))
 objs = {
 	--cube:new(),
 	--orb:new(vec3d:new(1, -1,     1), 9),
@@ -268,17 +299,18 @@ objs = {
 	--orb:new(vec3d:new(6, -2.5,   1), 9),
 }
 
-for i=1, 100 do
+for i=1, 30 do
 	local col = 3 + (9*(i % 2))
 	local phase = i / 25
-	local x, y, z = sin(phase), i * .4, cos(phase)
-	local o = orb:new(vec3d:new(x, y, z), col)
+	local x1, y1, z1 = sin(phase), i * .4, cos(phase)
+	local o = orb:new(vec3d:new(x1, y1, z1), col)
 	o.phase = phase
 	add(objs, o)
-	x, y, z = sin(phase + 0.5), i * .4, cos(phase + 0.5) 
-	o = orb:new(vec3d:new(x, y, z), col)
+	local x2, y2, z2 = sin(phase + 0.5), i * .4, cos(phase + 0.5) 
+	o = orb:new(vec3d:new(x2, y2, z2), col)
 	o.phase = phase + 0.5
 	add(objs, o)
+	add(objs, nucleotide:new(vec3d:new(x1, y1, z1), vec3d:new(x2, y2, z2), 1))
 end
 
 function _draw()
