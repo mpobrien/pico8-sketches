@@ -76,13 +76,15 @@ function cam:new(pos, velocity, rot)
 end
 
 function cam:update()
+	self.rot.y += 0.0003
+	self.rot.x += 0.0003
 	self.pos = self.pos:plus(self.velocity)
 	if(btn(0)) self.pos.x -= .1
 	if(btn(1)) self.pos.x += .1
 	if(btn(2)) self.pos.y -= .1
 	if(btn(3)) self.pos.y += .1
-	if(btn(4)) self.rot.y -= .01
-	if(btn(5)) self.rot.y += .01
+	if(btn(4)) self.rot.x -= .01
+	if(btn(5)) self.rot.x += .01
 	
 	--newy, newz = rotate2d(self.pos.y, self.pos.z, 0,1, 0.001)
 	--self.pos.x = newx
@@ -215,8 +217,8 @@ function _update()
 end
 
 nucleotide = {}
-function nucleotide:new(pos, pos2, angle)
-	local newobj = {pos=pos, pos2=pos2, angle=angle}
+function nucleotide:new(pos, pos2, angle, base)
+	local newobj = {pos=pos, pos2=pos2, angle=angle, base=base}
     self.__index = self
 	return setmetatable(newobj, self)
 end
@@ -228,6 +230,9 @@ end
 
 function nucleotide:draw()
 	local points={}
+	if c.pos.z > self.pos.z or c.pos.z > self.pos2.z then
+		return nil
+	end
 	local ends = {self.pos, self.pos2}
 	for p in all(ends) do
 		local x, y, z
@@ -242,20 +247,38 @@ function nucleotide:draw()
 		local f1 = f/3
 		add(points, {x+cx, y+cy})
 	end
-	line(points[1][1], points[1][2], points[2][1], points[2][2], 9)
+	local center = {(points[2][1] + points[1][1])/2, (points[2][2] + points[1][2])/2}
+	--if self.pos.z < c.pos.z or self.pos2.z < c.pos.z then
+		--return
+	--end
+	local c1, c2
+
+	if self.base == 0 then
+		c1, c2 = 8,3
+	elseif self.base == 1 then
+		c1, c2 = 3,8
+	elseif self.base == 2 then
+		c1, c2 = 14,9
+	elseif self.base == 3 then
+		c1, c2 = 9,14
+	end
+		       
+	line(center[1], center[2], points[2][1], points[2][2], c1)
+	line(center[1], center[2], points[1][1], points[1][2], c2)
 end
 
 orb = {}
-function orb:new(pos, col)
-	local neworb = {pos=pos, col=col}
+function orb:new(pos, col, size)
+	local neworb = {pos=pos, col=col, size=size}
     self.__index = self
 	return setmetatable(neworb, self)
 end
 
 function orb:update(c)
 	local center = vec3d:new(0,0,0)
-	self.pos.x = sin(self.phase)
-	self.pos.z = cos(self.phase)
+	s = 0.9
+	self.pos.x = s*sin(self.phase)
+	self.pos.z = s*cos(self.phase)
 	self.phase += 0.01
 	--local newx = center.x + (self.pos.x-center.x)*cos(theta) - (self.pos.y-center.y)*sin(theta);
 	--local newz = center.z + (self.pos.z-center.z)*cos(theta) - (self.pos.y-center.y)*sin(theta);
@@ -281,13 +304,13 @@ function orb:draw(c)
 	local f = 128 / z
 	x *= f
 	y *= f
-	local f1 = f/4
+	local f1 = f/(self.size)
 	fillp(0b0000000000000000)
 	circfill(cx + x, cy+ y, f1, self.col)
 	circ(cx + x, cy+ y, f1, 0)
 end
 
-c = cam:new(vec3d:new(4,3,-6), vec3d:new(0, 0.1, 0), vec3d:new(.1,.1,0))
+c = cam:new(vec3d:new(4,-8,-8), vec3d:new(-0.02, 0.09, .01), vec3d:new(-.01,-.1,.3))
 objs = {
 	--cube:new(),
 	--orb:new(vec3d:new(1, -1,     1), 9),
@@ -299,18 +322,25 @@ objs = {
 	--orb:new(vec3d:new(6, -2.5,   1), 9),
 }
 
-for i=1, 30 do
+for i=1, 41 do
+	local orbsize = 5
+	if i % 2 > 0 then
+		orbsize = 3
+	end
+	local s = 0.8 -- distance from 0
 	local col = 3 + (9*(i % 2))
 	local phase = i / 25
-	local x1, y1, z1 = sin(phase), i * .4, cos(phase)
-	local o = orb:new(vec3d:new(x1, y1, z1), col)
+	local x1, y1, z1 = s*sin(phase), i * .4, s*cos(phase)
+	local o = orb:new(vec3d:new(x1, y1, z1), col, orbsize)
 	o.phase = phase
 	add(objs, o)
-	local x2, y2, z2 = sin(phase + 0.5), i * .4, cos(phase + 0.5) 
-	o = orb:new(vec3d:new(x2, y2, z2), col)
+	local x2, y2, z2 = s*sin(phase + 0.5), i * .4, s*cos(phase + 0.5) 
+	o = orb:new(vec3d:new(x2, y2, z2), col, orbsize)
 	o.phase = phase + 0.5
 	add(objs, o)
-	add(objs, nucleotide:new(vec3d:new(x1, y1, z1), vec3d:new(x2, y2, z2), 1))
+	if i%2 > 0 then
+		add(objs, nucleotide:new(vec3d:new(x1, y1, z1), vec3d:new(x2, y2, z2), 1,flr(rnd(4))) )
+	end
 end
 
 function _draw()
@@ -363,11 +393,11 @@ end
 
 
 __sfx__
-000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-001300000015300000000000000000000000000015300153000000015300000001530000000153000000000000153000000000000000000000000000053000530000000053000000005300000000000000000000
-001300000e1061110615106180001065500005071000b10602106051060000500005106450c0060f00616006000051a0001a00000005106450000500005000050000500005000050000510645000050000500015
-001300000c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c003
-001300000c0250c0250c0250c0250e0250e0250e0250e0250e0250e0250e0250e025100251002510025100251302513025130251302513025100251002510025100251002510025100250c0250c0250c0250c025
+011d0000095550b5550b5550e5550e555105551c505125550c5050c505125550c5050c5050c5050c5050c505095550b5550b5550e5550e5550b5550e505005050040500303003030030300203000030000300003
+011d00000c353182001800018700186551870018700187000c3531870018700187001865518700187000c3130c35318700187000c453186551870018700187000c35318700187001870018655187001870018750
+001a00001a1561a1461a1361a1161065500005131500b10602106180500000500005106450c0060f00616006000051a0001a00000005106450000500005000050000500005000050000510645000050000500015
+011a00001d1561d1461d1361d1160c00318050171500c0030c0031c0500c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c0030c003
+001a00000c1570c1470c1370c11700100001001d150000000a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __music__
 03 01020304
 
